@@ -1,0 +1,10 @@
+[misc]
+debug=true
+
+[itop]
+host=http://itop.none.com
+user=admin
+pwd=admin
+
+[slack]
+token=
