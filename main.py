@@ -5,6 +5,7 @@ from flask import request
 from flask import jsonify
 from confiky import Confiky
 
+import json
 import requests
 import logging
 
@@ -73,6 +74,8 @@ def tickets():
 
 def get_single_request(request, ref):
     resp = itop.get_request(ref)
+    if not resp.objects:
+        return "%s not found." % ref
 
     el = resp.objects[0]
 
