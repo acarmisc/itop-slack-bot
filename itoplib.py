@@ -48,6 +48,10 @@ class iTopClient:
         schema = '%s/pages/UI.php?operation=details&class=%s&id=%s'
         return schema % (self.host, entity, id)
 
+    def get_request(self, ref):
+        query = 'SELECT UserRequest WHERE ref = "%s"' % ref.upper()
+        return self.get('UserRequest', query)
+
     def get_requests(self, agent, closed=True):
         # lookup using e-mail
         excluded_states = '"closed", "resolved", "rejected"' if closed else ''
@@ -55,4 +59,9 @@ class iTopClient:
                  WHERE Person.email = "%s" \
                  AND UserRequest.status NOT IN (%s)' % (agent, excluded_states) 
         return self.get('UserRequest', query)
+
+    def update_request(self, ref, field, value):
+        resp = self.itop.update('UserRequest', key='ref', key_value=ref, status=value)
+        print resp
+        return resp
 

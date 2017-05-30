@@ -2,7 +2,6 @@
 from flask import Flask
 from flask import request
 from flask import jsonify
-from flask_slackbot import SlackBot
 from confiky import Confiky
 
 import requests
@@ -13,14 +12,27 @@ c = Confiky(files='config.ini')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['SLACK_TOKEN'] = c.slack.token
-app.config['SLACK_CALLBACK'] = '/tickets'
-slackbot = SlackBot(app)
+
+from HTMLParser import HTMLParser
+
+class MLStripper(HTMLParser):
+    def __init__(self):
+        self.reset()
+        self.fed = []
+    def handle_data(self, d):
+        self.fed.append(d)
+    def get_data(self):
+        return ''.join(self.fed)
+
+def strip_tags(html):
+    s = MLStripper()
+    s.feed(html)
+    return s.get_data()
 
 
 def get_user_email(msg):
     users_url = 'https://slack.com/api/users.info'
-    res = requests.post(users_url, data=dict(token=app.config['SLACK_TOKEN'], 
+    res = requests.post(users_url, data=dict(token=c.slack.token, 
                                              scope='users:read', 
                                              user=msg.get('user_id')))
     email = res.json().get('user').get('profile').get('email')
@@ -28,8 +40,66 @@ def get_user_email(msg):
     return email
 
 
+@app.route('/callback/', methods=['POST'])
+def callback():
+    import json
+    print request.form
+    payload = json.loads(request.form.get('payload'))
+    action = payload.get('actions')[0].get('value')
+    cmd, obj_class, obj_id = payload.get('callback_id').split(' ')
+    if cmd == 'UPDATE':
+        if action == 'cancel':
+            return "Ok. Nothing done."
+        if action in ('pending', 'resolved'):
+            res = itop.update_request(obj_id, 'status', action)
+            print res
+        
+        return "UserRequest updated."
+
+
 @app.route('/tickets/', methods=['POST'])
 def tickets():
+    print request.form
+    
+    text = request.form.get('text').split(' ')
+    cmd = text.pop(0)
+    args = text
+
+    if not cmd or cmd == 'all':
+        return get_all_requests(request)
+
+    if cmd[:2].upper() == 'R-':
+        return get_single_request(request, cmd)
+
+    return "no valid command supplied"
+
+
+def get_single_request(request, ref):
+    resp = itop.get_request(ref)
+    print resp.__dict__
+
+    el = resp.objects[0]
+
+    actions = list()
+    actions.append(dict(name="cancel", text="cancel", type="button", value="cancel"))
+    actions.append(dict(name="pending", text="pending", type="button", value="pending"))
+    actions.append(dict(name="resolved", text="resolved", type="button", value="resolved", color="#40A864"))
+
+    fields = list()
+    fields.append(dict(title="Description", value=strip_tags(el.description)))
+    fields.append(dict(title="Caller", value=el.caller_id_friendlyname, short=True))
+    fields.append(dict(title="Service", value=el.service_name, short=True))
+    fields.append(dict(title="Created", value=el.start_date, short=True))
+    fields.append(dict(title="Last update", value=el.last_update, short=True))
+
+    attachments = list()
+    attachments.append(dict(text="Do you want to change the state?", color="#3AA3E3", callback_id="UPDATE UserRequest %s" % ref, actions=actions, fields=fields))
+
+    response = dict(text=el.title, attachments=attachments)
+    return jsonify(response)
+
+
+def get_all_requests(request):
     email = get_user_email(request.form)
     resp = itop.get_requests(email)
     
