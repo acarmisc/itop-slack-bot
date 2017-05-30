@@ -1,3 +1,4 @@
+#!/opt/itop-bot/venv/bin/python
 # coding=utf-8
 from flask import Flask
 from flask import request
@@ -8,7 +9,7 @@ import requests
 import logging
 
 
-c = Confiky(files='config.ini')
+c = Confiky(files='/opt/itop-bot/config.ini')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -42,8 +43,6 @@ def get_user_email(msg):
 
 @app.route('/callback/', methods=['POST'])
 def callback():
-    import json
-    print request.form
     payload = json.loads(request.form.get('payload'))
     action = payload.get('actions')[0].get('value')
     cmd, obj_class, obj_id = payload.get('callback_id').split(' ')
@@ -52,14 +51,12 @@ def callback():
             return "Ok. Nothing done."
         if action in ('pending', 'resolved'):
             res = itop.update_request(obj_id, 'status', action)
-            print res
         
         return "UserRequest updated."
 
 
 @app.route('/tickets/', methods=['POST'])
 def tickets():
-    print request.form
     
     text = request.form.get('text').split(' ')
     cmd = text.pop(0)
@@ -76,7 +73,6 @@ def tickets():
 
 def get_single_request(request, ref):
     resp = itop.get_request(ref)
-    print resp.__dict__
 
     el = resp.objects[0]
 

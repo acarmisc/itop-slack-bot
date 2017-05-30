@@ -62,6 +62,5 @@ class iTopClient:
 
     def update_request(self, ref, field, value):
         resp = self.itop.update('UserRequest', key='ref', key_value=ref, status=value)
-        print resp
         return resp
 

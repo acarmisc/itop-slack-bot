@@ -1,0 +1,11 @@
+[Unit]
+Description=iTopBot Service
+ 
+[Service]
+ExecStart=/opt/itop-bot/main.py
+StandardOutput=
+ 
+[Install]
+WantedBy=multi-user.target
+Alias=itopbot-service.service
+
