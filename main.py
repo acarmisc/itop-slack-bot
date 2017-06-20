@@ -56,6 +56,20 @@ def callback():
         return "UserRequest updated."
 
 
+@app.route('/tickets/new', methods=['GET', 'POST'])
+def new_ticket():
+    channel = '#itop'
+    url = 'https://slack.com/api/chat.postMessage'
+    req = get_single_request(request, request.form.get('req'), new=True)
+    print req
+    res = requests.post(url, data=dict(token=c.slack.token,
+                                       channel=channel,
+                                       text=req.get('text'),
+                                       attachments=json.dumps(req.get('attachments'))))
+
+    return ""   
+
+
 @app.route('/tickets/', methods=['POST'])
 def tickets():
     
@@ -67,17 +81,20 @@ def tickets():
         return get_all_requests(request)
 
     if cmd[:2].upper() == 'R-':
-        return get_single_request(request, cmd)
+        response = get_single_request(request, cmd)
+        return jsonify(response)
 
     return "no valid command supplied"
 
 
-def get_single_request(request, ref):
+def get_single_request(request, ref, new=False):
     resp = itop.get_request(ref)
     if not resp.objects:
         return "%s not found." % ref
 
     el = resp.objects[0]
+
+    req_url = itop.get_url(el.klass, el.key)
 
     actions = list()
     actions.append(dict(name="cancel", text="cancel", type="button", value="cancel"))
@@ -92,10 +109,12 @@ def get_single_request(request, ref):
     fields.append(dict(title="Last update", value=el.last_update, short=True))
 
     attachments = list()
-    attachments.append(dict(text="Do you want to change the state?", color="#3AA3E3", callback_id="UPDATE UserRequest %s" % ref, actions=actions, fields=fields))
+    if new:
+        attachments.append(dict(title_link=req_url, title="More details..", fields=fields))
+    else:
+        attachments.append(dict(text="Do you want to change the state?", color="#3AA3E3", callback_id="UPDATE UserRequest %s" % ref, actions=actions, fields=fields))
 
-    response = dict(text=el.title, attachments=attachments)
-    return jsonify(response)
+    return dict(text=el.title, attachments=attachments, )
 
 
 def get_all_requests(request):
