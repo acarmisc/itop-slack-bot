@@ -58,14 +58,28 @@ def callback():
 
 @app.route('/tickets/new', methods=['GET', 'POST'])
 def new_ticket():
-    channel = '#itop'
-    url = 'https://slack.com/api/chat.postMessage'
-    req = get_single_request(request, request.form.get('req'), new=True)
-    print req
-    res = requests.post(url, data=dict(token=c.slack.token,
-                                       channel=channel,
-                                       text=req.get('text'),
-                                       attachments=json.dumps(req.get('attachments'))))
+    import thread
+    def handle_new(request):
+        import time
+        time.sleep(5)
+        channel = '@acarmisc' #itop'
+        url = 'https://slack.com/api/chat.postMessage'
+
+        try:
+            req = get_single_request(request, request.get('req'), new=True)
+        except ValueError as e:
+            logger.error(e)
+            print e
+    
+        res = requests.post(url, data=dict(token=c.slack.token,
+                                           channel=channel,
+                                           text=req.get('text'),
+                                           attachments=json.dumps(req.get('attachments'))))
+
+        return 
+
+    req = request.form.copy()
+    thread.start_new_thread(handle_new, (req,))
 
     return ""   
 
@@ -88,9 +102,13 @@ def tickets():
 
 
 def get_single_request(request, ref, new=False):
-    resp = itop.get_request(ref)
+    if new:
+        resp = itop.get_ticket(ref)
+    else:
+        resp = itop.get_request(ref)
+
     if not resp.objects:
-        return "%s not found." % ref
+        raise ValueError("%s not found." % ref)
 
     el = resp.objects[0]
 
@@ -104,9 +122,10 @@ def get_single_request(request, ref, new=False):
     fields = list()
     fields.append(dict(title="Description", value=strip_tags(el.description)))
     fields.append(dict(title="Caller", value=el.caller_id_friendlyname, short=True))
-    fields.append(dict(title="Service", value=el.service_name, short=True))
-    fields.append(dict(title="Created", value=el.start_date, short=True))
-    fields.append(dict(title="Last update", value=el.last_update, short=True))
+    if not new:
+        fields.append(dict(title="Service", value=el.service_name, short=True))
+        fields.append(dict(title="Created", value=el.start_date, short=True))
+        fields.append(dict(title="Last update", value=el.last_update, short=True))
 
     attachments = list()
     if new:

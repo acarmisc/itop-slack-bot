@@ -52,6 +52,10 @@ class iTopClient:
         query = 'SELECT UserRequest WHERE ref = "%s"' % ref.upper()
         return self.get('UserRequest', query)
 
+    def get_ticket(self, ref):
+        query = 'SELECT Ticket WHERE ref = "%s"' % ref.upper()
+        return self.get('Ticket', query)
+
     def get_requests(self, agent, closed=True):
         # lookup using e-mail
         excluded_states = '"closed", "resolved", "rejected"' if closed else ''
