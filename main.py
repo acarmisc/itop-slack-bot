@@ -62,7 +62,7 @@ def new_ticket():
     def handle_new(request):
         import time
         time.sleep(5)
-        channel = '@acarmisc' #itop'
+        channel = '#itop'
         url = 'https://slack.com/api/chat.postMessage'
 
         try:
